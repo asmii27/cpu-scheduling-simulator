@@ -1,11 +1,11 @@
-# ⚡ CPU Scheduler
+# CPU Scheduler
 
 An interactive browser-based visualizer for 6 classic CPU scheduling algorithms — built with vanilla HTML, CSS, and JavaScript.
 
-## 🔗 Live Demo
-👉 **[https://asmii27.github.io/cpu-scheduling-simulator](https://asmii27.github.io/cpu-scheduling-simulator)**
+## Live Demo
+[https://asmii27.github.io/cpu-scheduling-simulator](https://asmii27.github.io/cpu-scheduling-simulator)
 
-## 📌 Algorithms Covered
+## Algorithms Covered
 
 | # | Algorithm | Type |
 |---|-----------|------|
@@ -16,28 +16,28 @@ An interactive browser-based visualizer for 6 classic CPU scheduling algorithms 
 | 05 | Priority Scheduling | Non-Preemptive |
 | 06 | Priority Scheduling | Preemptive |
 
-## ✨ Features
-- Color-coded **Gantt chart** visualization
+## Features
+- Color-coded Gantt chart visualization
 - Live metrics — Avg Waiting Time, Turnaround, CPU Utilization, Throughput
-- Add/remove processes dynamically
+- Add and remove processes dynamically
 - Fully responsive dark UI
-- Zero dependencies — one single HTML file
+- Zero dependencies — single HTML file
 
-## 🚀 How to Use
+## How to Use
 1. Select a scheduling algorithm
 2. Set arrival time, burst time, and priority for each process
-3. Click **Run Simulation**
+3. Click Run Simulation
 4. View the Gantt chart and performance breakdown
 
-## 🛠 Tech Stack
+## Tech Stack
 ![HTML](https://img.shields.io/badge/HTML5-E34F26?style=flat&logo=html5&logoColor=white)
 ![CSS](https://img.shields.io/badge/CSS3-1572B6?style=flat&logo=css3&logoColor=white)
 ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat&logo=javascript&logoColor=black)
 
-## 📂 Project Structure
+## Project Structure
 ```
 cpu-scheduling-simulator/
-├── index.html   ← entire app (HTML + CSS + JS)
+├── index.html   — entire app (HTML + CSS + JS)
 └── README.md
 ```
 
