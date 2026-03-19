@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CPU Scheduling Simulator</title>
+  <style>
+    /* ── Reset & Base ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #f5f5f5;
+      --surface:   #ffffff;
+      --surface2:  #f0f0f0;
+      --border:    #e0e0e0;
+      --border2:   #c8c8c8;
+      --text:      #1a1a1a;
+      --text2:     #555555;
+      --text3:     #888888;
+      --accent:    #1a1a1a;
+      --accent-bg: #e8f0fe;
+      --accent-txt:#1a56db;
+      --danger-bg: #fde8e8;
+      --danger-txt:#b91c1c;
+      --radius:    8px;
+      --radius-lg: 12px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:        #111111;
+        --surface:   #1e1e1e;
+        --surface2:  #2a2a2a;
+        --border:    #333333;
+        --border2:   #444444;
+        --text:      #e8e8e8;
+        --text2:     #aaaaaa;
+        --text3:     #666666;
+        --accent:    #e8e8e8;
+        --accent-bg: #1e2d4a;
+        --accent-txt:#93b4f8;
+        --danger-bg: #3a1a1a;
+        --danger-txt:#f87171;
+      }
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--text);
+      background: var(--bg);
+      padding: 24px 16px;
+    }
+
+    /* ── Layout ───────────────────────────────────────── */
+    .app { max-width: 860px; margin: 0 auto; }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .header h1 { font-size: 22px; font-weight: 600; }
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: var(--accent-bg);
+      color: var(--accent-txt);
+      letter-spacing: .03em;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--text3);
+      margin-bottom: 14px;
+    }
+
+    /* ── Algorithm Selector ───────────────────────────── */
+    .algo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .algo-btn {
+      padding: 9px 12px;
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text2);
+      font-size: 13px;
+      cursor: pointer;
+      text-align: center;
+      transition: all .15s;
+    }
+    .algo-btn:hover {
+      border-color: var(--accent);
+      color: var(--text);
+      background: var(--surface2);
+    }
+    .algo-btn.active {
+      border: 2px solid var(--accent-txt);
+      background: var(--accent-bg);
+      color: var(--accent-txt);
+      font-weight: 600;
+    }
+
+    .algo-desc {
+      font-size: 13px;
+      color: var(--text2);
+      padding: 10px 14px;
+      background: var(--surface2);
+      border-radius: var(--radius);
+      border-left: 3px solid var(--accent-txt);
+      margin-bottom: 10px;
+    }
+
+    .quantum-row {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .quantum-row label { font-size: 13px; color: var(--text2); }
+    .quantum-input {
+      width: 64px;
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 13px;
+      padding: 6px 8px;
+      text-align: center;
+    }
+    .quantum-input:focus { outline: 2px solid var(--accent-txt); outline-offset: 1px; }
+
+    /* ── Process Table ────────────────────────────────── */
+    .proc-header {
+      display: grid;
+      grid-template-columns: 44px 1fr 1fr 1fr 1fr 36px;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .proc-row {
+      display: grid;
+      grid-template-columns: 44px 1fr 1fr 1fr 1fr 36px;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .col-lbl {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: var(--text3);
+      text-align: center;
+    }
+
+    .p-name {
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+    .p-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    .num-input {
+      width: 100%;
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 13px;
+      padding: 7px 8px;
+      text-align: center;
+      transition: border-color .15s;
+    }
+    .num-input:focus { outline: 2px solid var(--accent-txt); outline-offset: 1px; border-color: transparent; }
+
+    .del-btn {
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--text3);
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .15s;
+    }
+    .del-btn:hover { background: var(--danger-bg); color: var(--danger-txt); border-color: var(--danger-txt); }
+
+    .add-btn {
+      width: 100%;
+      margin-top: 6px;
+      padding: 8px;
+      border: 1px dashed var(--border2);
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--text2);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .add-btn:hover { background: var(--surface2); color: var(--text); border-color: var(--accent); }
+
+    /* ── Run Button & Error ───────────────────────────── */
+    .run-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+
+    .run-btn {
+      padding: 9px 24px;
+      border: none;
+      border-radius: var(--radius);
+      background: var(--accent);
+      color: var(--bg);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .run-btn:hover { opacity: .82; }
+
+    .reset-btn {
+      padding: 9px 16px;
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--text2);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .reset-btn:hover { background: var(--surface2); color: var(--text); }
+
+    .error-msg {
+      font-size: 13px;
+      color: var(--danger-txt);
+      padding: 6px 12px;
+      background: var(--danger-bg);
+      border-radius: var(--radius);
+    }
+
+    /* ── Results ──────────────────────────────────────── */
+    #result-section { display: none; }
+
+    /* Gantt Chart */
+    .gantt-wrap { overflow-x: auto; padding-bottom: 4px; }
+    .gantt-bar {
+      display: flex;
+      height: 40px;
+      border-radius: var(--radius);
+      overflow: hidden;
+      min-width: 400px;
+    }
+    .gantt-seg {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+      min-width: 28px;
+      cursor: default;
+      transition: filter .1s;
+      position: relative;
+    }
+    .gantt-seg:hover { filter: brightness(1.1); }
+    .gantt-seg.idle {
+      background: var(--surface2) !important;
+      color: var(--text3);
+    }
+
+    .gantt-timeline {
+      display: flex;
+      position: relative;
+      height: 20px;
+      margin-top: 4px;
+      min-width: 400px;
+    }
+    .gantt-tick {
+      position: absolute;
+      font-size: 11px;
+      color: var(--text3);
+      transform: translateX(-50%);
+    }
+
+    /* Stats Cards */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .stat-card {
+      background: var(--surface2);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+    }
+    .stat-label { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
+    .stat-val { font-size: 22px; font-weight: 600; color: var(--text); }
+    .stat-unit { font-size: 12px; color: var(--text3); font-weight: 400; }
+
+    /* Process Details Table */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th {
+      text-align: left;
+      padding: 7px 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text2);
+      font-weight: 600;
+      font-size: 12px;
+      background: var(--surface2);
+    }
+    thead th:first-child { border-radius: var(--radius) 0 0 0; }
+    thead th:last-child  { border-radius: 0 var(--radius) 0 0; }
+    tbody td { padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text); }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: var(--surface2); }
+
+    /* Color palette for processes */
+    /* (applied via JS) */
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <div class="header">
+    <h1>CPU Scheduling Simulator</h1>
+    <span class="badge" id="algo-badge">FCFS</span>
+  </div>
+
+  <!-- Algorithm Selection -->
+  <div class="card">
+    <div class="card-title">Select Algorithm</div>
+    <div class="algo-grid">
+      <button class="algo-btn active" data-algo="fcfs">FCFS</button>
+      <button class="algo-btn" data-algo="sjf">SJF (Non-preemptive)</button>
+      <button class="algo-btn" data-algo="srtn">SRTN (Preemptive SJF)</button>
+      <button class="algo-btn" data-algo="rr">Round Robin</button>
+      <button class="algo-btn" data-algo="priority-np">Priority (Non-preemptive)</button>
+      <button class="algo-btn" data-algo="priority-p">Priority (Preemptive)</button>
+    </div>
+    <div class="algo-desc" id="algo-desc">
+      Processes are executed in the order they arrive. Simple and fair for batch systems, but can cause the convoy effect.
+    </div>
+    <div class="quantum-row" id="quantum-row">
+      <label for="quantum">Time Quantum:</label>
+      <input type="number" id="quantum" class="quantum-input" value="2" min="1" max="20" />
+      <span style="color:var(--text2);font-size:13px">units</span>
+    </div>
+  </div>
+
+  <!-- Process Input -->
+  <div class="card">
+    <div class="card-title">Processes</div>
+    <!-- Column Headers -->
+    <div class="proc-header" id="proc-header">
+      <div class="col-lbl">Process</div>
+      <div class="col-lbl">Arrival</div>
+      <div class="col-lbl">Burst</div>
+      <div class="col-lbl" id="col-pri" style="display:none">Priority</div>
+      <div class="col-lbl" id="col-spacer"></div>
+      <div></div>
+    </div>
+    <div id="process-list"></div>
+    <button class="add-btn" onclick="addProcess()">+ Add Process</button>
+  </div>
+
+  <!-- Run Controls -->
+  <div class="card">
+    <div class="run-row">
+      <button class="run-btn" onclick="runSimulation()">Run Simulation ↗</button>
+      <button class="reset-btn" onclick="resetAll()">Reset</button>
+      <div id="error-msg"></div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="result-section">
+
+    <!-- Gantt Chart -->
+    <div class="card">
+      <div class="card-title">Gantt Chart</div>
+      <div class="gantt-wrap" id="gantt-wrap"></div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid" id="stats-grid"></div>
+
+    <!-- Per-process table -->
+    <div class="card">
+      <div class="card-title">Process Details</div>
+      <div class="table-wrap" id="table-wrap"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════
+   DATA & STATE
+══════════════════════════════════════════════ */
+const COLORS = [
+  '#4f46e5','#0891b2','#b45309','#be185d',
+  '#166534','#6d28d9','#c2410c','#0369a1',
+  '#065f46','#9d174d'
+];
+
+const ALGO_DESCS = {
+  fcfs:        'Processes are executed in the order they arrive. Simple and fair for batch systems, but can cause the convoy effect.',
+  sjf:         'Picks the process with the shortest burst time from the ready queue. Minimizes average waiting time but can starve long processes.',
+  srtn:        'Preemptive version of SJF. Switches to a new process if its remaining time is shorter than the current process\'s remaining time.',
+  rr:          'Each process gets a fixed time slice (quantum) in round-robin fashion. Great for time-sharing systems — ensures every process gets CPU time.',
+  'priority-np':'Executes the highest-priority process first (lower number = higher priority). Non-preemptive: a running process finishes before switching.',
+  'priority-p': 'Preemptive priority scheduling. A higher-priority process immediately preempts the currently running one.',
+};
+
+let processes = [];   // Array of process objects
+let pid       = 1;    // Auto-increment ID counter
+let currentAlgo = 'fcfs';
+
+/* ══════════════════════════════════════════════
+   PROCESS MANAGEMENT
+══════════════════════════════════════════════ */
+function addProcess(at = 0, bt = 3, priority = 1) {
+  processes.push({ id: pid++, at, bt, priority });
+  renderProcessList();
+}
+
+function removeProcess(id) {
+  processes = processes.filter(p => p.id !== id);
+  renderProcessList();
+}
+
+function updateProcess(id, field, value) {
+  const p = processes.find(p => p.id === id);
+  if (p) p[field] = Number(value);
+}
+
+function resetAll() {
+  processes = [];
+  pid = 1;
+  renderProcessList();
+  document.getElementById('result-section').style.display = 'none';
+  document.getElementById('error-msg').innerHTML = '';
+  // Re-add default processes
+  addProcess(0, 5, 2);
+  addProcess(1, 3, 1);
+  addProcess(2, 4, 3);
+  addProcess(4, 2, 2);
+}
+
+/* ══════════════════════════════════════════════
+   RENDER PROCESS LIST
+══════════════════════════════════════════════ */
+function renderProcessList() {
+  const isPriority = currentAlgo.startsWith('priority');
+
+  // Toggle priority column header visibility
+  document.getElementById('col-pri').style.display     = isPriority ? '' : 'none';
+  document.getElementById('col-spacer').style.display  = isPriority ? 'none' : '';
+
+  const list = document.getElementById('process-list');
+  list.innerHTML = '';
+
+  processes.forEach((p, i) => {
+    const color = COLORS[i % COLORS.length];
+    const row = document.createElement('div');
+    row.className = 'proc-row';
+
+    row.innerHTML = `
+      <div class="p-name">
+        <span class="p-dot" style="background:${color}"></span>
+        P${p.id}
+      </div>
+      <input class="num-input" type="number" min="0"  max="999" value="${p.at}"
+             onchange="updateProcess(${p.id},'at',this.value)"       title="Arrival Time" />
+      <input class="num-input" type="number" min="1"  max="999" value="${p.bt}"
+             onchange="updateProcess(${p.id},'bt',this.value)"       title="Burst Time" />
+      ${isPriority
+        ? `<input class="num-input" type="number" min="1" max="20" value="${p.priority}"
+               onchange="updateProcess(${p.id},'priority',this.value)" title="Priority (1=highest)" />`
+        : '<div></div>'}
+      <div></div>
+      <button class="del-btn" onclick="removeProcess(${p.id})" title="Remove process">×</button>
+    `;
+    list.appendChild(row);
+  });
+}
+
+/* ══════════════════════════════════════════════
+   ALGORITHM SELECTION
+══════════════════════════════════════════════ */
+document.querySelectorAll('.algo-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    // Update active button
+    document.querySelectorAll('.algo-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    // Update state
+    currentAlgo = btn.dataset.algo;
+
+    // Update badge & description
+    document.getElementById('algo-badge').textContent = btn.textContent;
+    document.getElementById('algo-desc').textContent  = ALGO_DESCS[currentAlgo];
+
+    // Show/hide quantum input
+    document.getElementById('quantum-row').style.display = currentAlgo === 'rr' ? 'flex' : 'none';
+
+    // Re-render process list (priority column may change)
+    renderProcessList();
+
+    // Hide old results
+    document.getElementById('result-section').style.display = 'none';
+    document.getElementById('error-msg').innerHTML = '';
+  });
+});
+
+/* ══════════════════════════════════════════════
+   SCHEDULING ALGORITHMS
+══════════════════════════════════════════════ */
+
+/**
+ * Returns an array of timeline segments: { pid, start, end }
+ * pid === 'idle' means CPU is idle.
+ */
+function schedule(procs, algo, quantum) {
+  // Deep-copy so originals are not mutated
+  const ps = procs.map(p => ({ ...p, remaining: p.bt, ct: 0 }));
+
+  let timeline = [];
+  let t = 0;
+
+  /* ── FCFS ── */
+  if (algo === 'fcfs') {
+    const sorted = [...ps].sort((a, b) => a.at - b.at || a.id - b.id);
+    for (const p of sorted) {
+      if (t < p.at) { pushIdle(timeline, t, p.at); t = p.at; }
+      timeline.push({ pid: p.id, start: t, end: t + p.bt });
+      p.ct = t + p.bt;
+      t = p.ct;
+    }
+  }
+
+  /* ── SJF (Non-preemptive) ── */
+  else if (algo === 'sjf') {
+    const done = new Array(ps.length).fill(false);
+    let finished = 0;
+    while (finished < ps.length) {
+      const ready = ps.filter((p, i) => !done[i] && p.at <= t);
+      if (ready.length === 0) {
+        const next = ps.filter((_, i) => !done[i]).sort((a, b) => a.at - b.at)[0];
+        pushIdle(timeline, t, next.at); t = next.at; continue;
+      }
+      // Pick shortest burst; tie-break by arrival then ID
+      const chosen = ready.reduce((a, b) =>
+        a.bt < b.bt ? a : (a.bt === b.bt && a.at <= b.at ? a : b));
+      timeline.push({ pid: chosen.id, start: t, end: t + chosen.bt });
+      chosen.ct = t + chosen.bt; t = chosen.ct;
+      done[ps.indexOf(chosen)] = true; finished++;
+    }
+  }
+
+  /* ── SRTN (Preemptive SJF) ── */
+  else if (algo === 'srtn') {
+    const done = new Array(ps.length).fill(false);
+    let finished = 0;
+    while (finished < ps.length) {
+      const ready = ps.filter((p, i) => !done[i] && p.at <= t);
+      if (ready.length === 0) {
+        const next = ps.filter((_, i) => !done[i]).sort((a, b) => a.at - b.at)[0];
+        pushIdle(timeline, t, next.at); t = next.at; continue;
+      }
+      // Pick shortest remaining; tie-break by arrival then ID
+      const chosen = ready.reduce((a, b) =>
+        a.remaining < b.remaining ? a : (a.remaining === b.remaining && a.at <= b.at ? a : b));
+
+      // Extend last segment or start new one
+      const last = timeline[timeline.length - 1];
+      if (last && last.pid === chosen.id) last.end++;
+      else timeline.push({ pid: chosen.id, start: t, end: t + 1 });
+
+      chosen.remaining--;
+      if (chosen.remaining === 0) {
+        chosen.ct = t + 1;
+        done[ps.indexOf(chosen)] = true; finished++;
+      }
+      t++;
+    }
+  }
+
+  /* ── Round Robin ── */
+  else if (algo === 'rr') {
+    const q = Math.max(1, quantum);
+    const queue   = [];    // Ready queue (FIFO)
+    let   idx     = 0;     // Index into arrival-sorted processes
+
+    // Sort by arrival time
+    const sorted = [...ps].sort((a, b) => a.at - b.at || a.id - b.id);
+    idx = 0;
+
+    const addArrivals = () => {
+      while (idx < sorted.length && sorted[idx].at <= t) {
+        queue.push(sorted[idx]); idx++;
+      }
+    };
+    addArrivals();
+
+    while (queue.length > 0 || idx < sorted.length) {
+      if (queue.length === 0) {
+        // CPU idle — jump to next arrival
+        const next = sorted[idx];
+        pushIdle(timeline, t, next.at); t = next.at;
+        addArrivals(); continue;
+      }
+      const curr = queue.shift();
+      const run  = Math.min(q, curr.remaining);
+      timeline.push({ pid: curr.id, start: t, end: t + run });
+      t += run; curr.remaining -= run;
+      addArrivals();                       // Add new arrivals during this quantum
+      if (curr.remaining > 0) queue.push(curr);   // Re-queue if not done
+      else curr.ct = t;
+    }
+  }
+
+  /* ── Priority Non-preemptive ── */
+  else if (algo === 'priority-np') {
+    const done = new Array(ps.length).fill(false);
+    let finished = 0;
+    while (finished < ps.length) {
+      const ready = ps.filter((p, i) => !done[i] && p.at <= t);
+      if (ready.length === 0) {
+        const next = ps.filter((_, i) => !done[i]).sort((a, b) => a.at - b.at)[0];
+        pushIdle(timeline, t, next.at); t = next.at; continue;
+      }
+      // Lower number = higher priority; tie-break by arrival then ID
+      const chosen = ready.reduce((a, b) =>
+        a.priority < b.priority ? a : (a.priority === b.priority && a.at <= b.at ? a : b));
+      timeline.push({ pid: chosen.id, start: t, end: t + chosen.remaining });
+      chosen.ct = t + chosen.remaining; t = chosen.ct;
+      done[ps.indexOf(chosen)] = true; finished++;
+    }
+  }
+
+  /* ── Priority Preemptive ── */
+  else if (algo === 'priority-p') {
+    const done = new Array(ps.length).fill(false);
+    let finished = 0;
+    while (finished < ps.length) {
+      const ready = ps.filter((p, i) => !done[i] && p.at <= t);
+      if (ready.length === 0) {
+        const next = ps.filter((_, i) => !done[i]).sort((a, b) => a.at - b.at)[0];
+        pushIdle(timeline, t, next.at); t = next.at; continue;
+      }
+      const chosen = ready.reduce((a, b) =>
+        a.priority < b.priority ? a : (a.priority === b.priority && a.at <= b.at ? a : b));
+      const last = timeline[timeline.length - 1];
+      if (last && last.pid === chosen.id) last.end++;
+      else timeline.push({ pid: chosen.id, start: t, end: t + 1 });
+      chosen.remaining--;
+      if (chosen.remaining === 0) {
+        chosen.ct = t + 1;
+        done[ps.indexOf(chosen)] = true; finished++;
+      }
+      t++;
+    }
+  }
+
+  return { timeline, ps };
+}
+
+function pushIdle(timeline, start, end) {
+  const last = timeline[timeline.length - 1];
+  if (last && last.pid === 'idle') last.end = end;
+  else timeline.push({ pid: 'idle', start, end });
+}
+
+/* ══════════════════════════════════════════════
+   COMPUTE METRICS
+══════════════════════════════════════════════ */
+function computeMetrics(ps) {
+  ps.forEach(p => {
+    p.tat = p.ct - p.at;           // Turnaround = Completion - Arrival
+    p.wt  = p.tat - p.bt;          // Waiting     = Turnaround - Burst
+  });
+  const n       = ps.length;
+  const avgWT   = (ps.reduce((s, p) => s + p.wt,  0) / n).toFixed(2);
+  const avgTAT  = (ps.reduce((s, p) => s + p.tat, 0) / n).toFixed(2);
+  return { avgWT, avgTAT };
+}
+
+/* ══════════════════════════════════════════════
+   RUN SIMULATION (entry point)
+══════════════════════════════════════════════ */
+function runSimulation() {
+  const errEl = document.getElementById('error-msg');
+  errEl.innerHTML = '';
+
+  // Validation
+  if (processes.length === 0) {
+    errEl.innerHTML = '<span class="error-msg">Please add at least one process.</span>';
+    return;
+  }
+  for (const p of processes) {
+    if (p.bt < 1) {
+      errEl.innerHTML = `<span class="error-msg">P${p.id}: Burst time must be ≥ 1.</span>`;
+      return;
+    }
+  }
+
+  const quantum = parseInt(document.getElementById('quantum').value, 10) || 2;
+  const { timeline, ps } = schedule(processes, currentAlgo, quantum);
+  const { avgWT, avgTAT } = computeMetrics(ps);
+
+  const totalTime = timeline.length > 0 ? timeline[timeline.length - 1].end : 0;
+  const idleTime  = timeline.filter(s => s.pid === 'idle').reduce((s, seg) => s + (seg.end - seg.start), 0);
+  const cpuUtil   = totalTime > 0 ? ((totalTime - idleTime) / totalTime * 100).toFixed(1) : 0;
+  const throughput = totalTime > 0 ? (ps.length / totalTime).toFixed(3) : 0;
+
+  renderGantt(timeline, ps, totalTime);
+  renderStats(avgWT, avgTAT, cpuUtil, throughput, totalTime);
+  renderTable(ps);
+
+  document.getElementById('result-section').style.display = '';
+}
+
+/* ══════════════════════════════════════════════
+   RENDER: GANTT CHART
+══════════════════════════════════════════════ */
+function renderGantt(timeline, ps, totalTime) {
+  // Build color map
+  const pidColor = {};
+  ps.forEach((p, i) => { pidColor[p.id] = COLORS[i % COLORS.length]; });
+
+  // Merge adjacent identical segments (for cleaner display)
+  const merged = [];
+  for (const seg of timeline) {
+    const last = merged[merged.length - 1];
+    if (last && last.pid === seg.pid) last.end = seg.end;
+    else merged.push({ ...seg });
+  }
+
+  const total = totalTime || 1;
+
+  // Build bar HTML
+  let barHTML = '<div class="gantt-bar">';
+  for (const seg of merged) {
+    const widthPct  = ((seg.end - seg.start) / total * 100).toFixed(2);
+    const minWidth  = Math.max(28, (seg.end - seg.start) * 28);
+    const isIdle    = seg.pid === 'idle';
+    const label     = isIdle ? 'idle' : `P${seg.pid}`;
+    const bgColor   = isIdle ? '' : `background:${pidColor[seg.pid]};`;
+    const tooltip   = `${label}: [${seg.start} → ${seg.end}]`;
+    barHTML += `
+      <div class="gantt-seg${isIdle ? ' idle' : ''}"
+           style="${bgColor}width:${widthPct}%;min-width:${minWidth}px"
+           title="${tooltip}">
+        ${label}
+      </div>`;
+  }
+  barHTML += '</div>';
+
+  // Build timeline ticks
+  const ticks = new Set([0]);
+  merged.forEach(s => { ticks.add(s.start); ticks.add(s.end); });
+  let tickHTML = `<div class="gantt-timeline" style="min-width:${merged.length * 28}px">`;
+  [...ticks].sort((a, b) => a - b).forEach(tick => {
+    const pct = (tick / total * 100).toFixed(2);
+    tickHTML += `<span class="gantt-tick" style="left:${pct}%">${tick}</span>`;
+  });
+  tickHTML += '</div>';
+
+  document.getElementById('gantt-wrap').innerHTML = barHTML + tickHTML;
+}
+
+/* ══════════════════════════════════════════════
+   RENDER: STATS CARDS
+══════════════════════════════════════════════ */
+function renderStats(avgWT, avgTAT, cpuUtil, throughput, totalTime) {
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">Avg Waiting Time</div>
+      <div class="stat-val">${avgWT} <span class="stat-unit">units</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Avg Turnaround</div>
+      <div class="stat-val">${avgTAT} <span class="stat-unit">units</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">CPU Utilization</div>
+      <div class="stat-val">${cpuUtil}<span class="stat-unit">%</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Throughput</div>
+      <div class="stat-val">${throughput} <span class="stat-unit">p/unit</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Time</div>
+      <div class="stat-val">${totalTime} <span class="stat-unit">units</span></div>
+    </div>
+  `;
+}
+
+/* ══════════════════════════════════════════════
+   RENDER: PROCESS DETAILS TABLE
+══════════════════════════════════════════════ */
+function renderTable(ps) {
+  const isPriority = currentAlgo.startsWith('priority');
+  const pidColor   = {};
+  ps.forEach((p, i) => { pidColor[p.id] = COLORS[i % COLORS.length]; });
+
+  let html = `
+    <table>
+      <thead>
+        <tr>
+          <th>Process</th>
+          <th>Arrival</th>
+          <th>Burst</th>
+          ${isPriority ? '<th>Priority</th>' : ''}
+          <th>Completion</th>
+          <th>Turnaround</th>
+          <th>Waiting</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+  [...ps].sort((a, b) => a.id - b.id).forEach(p => {
+    const color = pidColor[p.id];
+    html += `
+      <tr>
+        <td>
+          <span class="p-dot" style="background:${color};display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;"></span>
+          P${p.id}
+        </td>
+        <td>${p.at}</td>
+        <td>${p.bt}</td>
+        ${isPriority ? `<td>${p.priority}</td>` : ''}
+        <td>${p.ct}</td>
+        <td>${p.tat}</td>
+        <td>${p.wt}</td>
+      </tr>`;
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('table-wrap').innerHTML = html;
+}
+
+/* ══════════════════════════════════════════════
+   INIT — Default Processes
+══════════════════════════════════════════════ */
+addProcess(0, 5, 2);
+addProcess(1, 3, 1);
+addProcess(2, 4, 3);
+addProcess(4, 2, 2);
+</script>
+</body>
+</html>
