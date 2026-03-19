@@ -1,490 +1,695 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CPU Scheduling Simulator</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --bg: #f5f5f5; --surface: #ffffff; --surface2: #f0f0f0;
-      --border: #e0e0e0; --border2: #c8c8c8;
-      --text: #1a1a1a; --text2: #555; --text3: #888;
-      --accent: #1a1a1a; --accent-bg: #e8f0fe; --accent-txt: #1a56db;
-      --danger-bg: #fde8e8; --danger-txt: #b91c1c;
-      --radius: 8px; --radius-lg: 12px;
-    }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; color: var(--text); background: var(--bg); padding: 24px 16px; }
-    .app { max-width: 860px; margin: 0 auto; }
-    .header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
-    .header h1 { font-size: 22px; font-weight: 600; }
-    .badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--accent-bg); color: var(--accent-txt); }
-    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 16px; }
-    .card-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text3); margin-bottom: 14px; }
-    .algo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-bottom: 14px; }
-    .algo-btn { padding: 9px 12px; border: 1px solid var(--border2); border-radius: var(--radius); background: var(--surface); color: var(--text2); font-size: 13px; cursor: pointer; text-align: center; }
-    .algo-btn.active { border: 2px solid var(--accent-txt); background: var(--accent-bg); color: var(--accent-txt); font-weight: 600; }
-    .algo-desc { font-size: 13px; color: var(--text2); padding: 10px 14px; background: var(--surface2); border-radius: var(--radius); border-left: 3px solid var(--accent-txt); margin-bottom: 10px; }
-    .quantum-row { display: none; align-items: center; gap: 10px; margin-top: 8px; }
-    .quantum-row label { font-size: 13px; color: var(--text2); }
-    .quantum-input { width: 64px; border: 1px solid var(--border2); border-radius: var(--radius); background: var(--surface2); color: var(--text); font-size: 13px; padding: 6px 8px; text-align: center; }
-    .proc-header, .proc-row { display: grid; grid-template-columns: 44px 1fr 1fr 1fr 1fr 36px; gap: 8px; align-items: center; margin-bottom: 6px; }
-    .col-lbl { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--text3); text-align: center; }
-    .p-name { font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 5px; }
-    .p-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-    .num-input { width: 100%; border: 1px solid var(--border2); border-radius: var(--radius); background: var(--surface2); color: var(--text); font-size: 13px; padding: 7px 8px; text-align: center; }
-    .del-btn { width: 32px; height: 32px; border: 1px solid var(--border2); border-radius: var(--radius); background: transparent; color: var(--text3); cursor: pointer; font-size: 16px; }
-    .del-btn:hover { background: var(--danger-bg); color: var(--danger-txt); }
-    .add-btn { width: 100%; margin-top: 6px; padding: 8px; border: 1px dashed var(--border2); border-radius: var(--radius); background: transparent; color: var(--text2); font-size: 13px; cursor: pointer; }
-    .run-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-    .run-btn { padding: 10px 28px; border: none; border-radius: var(--radius); background: #1a1a1a; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; }
-    .reset-btn { padding: 10px 16px; border: 1px solid var(--border2); border-radius: var(--radius); background: transparent; color: var(--text2); font-size: 13px; cursor: pointer; }
-    .err { font-size: 13px; color: var(--danger-txt); padding: 6px 12px; background: var(--danger-bg); border-radius: var(--radius); }
-    #result-section { display: none; }
-    .gantt-wrap { overflow-x: auto; }
-    .gantt-bar { display: flex; height: 40px; border-radius: var(--radius); overflow: hidden; min-width: 300px; }
-    .gantt-seg { display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #fff; min-width: 28px; }
-    .gantt-seg.idle { background: var(--surface2) !important; color: var(--text3); }
-    .gantt-timeline { position: relative; height: 22px; margin-top: 4px; }
-    .gantt-tick { position: absolute; font-size: 11px; color: var(--text3); transform: translateX(-50%); }
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-bottom: 16px; }
-    .stat-card { background: var(--surface2); border-radius: var(--radius); padding: 12px 14px; }
-    .stat-label { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
-    .stat-val { font-size: 22px; font-weight: 600; }
-    .stat-unit { font-size: 12px; color: var(--text3); font-weight: 400; }
-    .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    thead th { text-align: left; padding: 7px 12px; border-bottom: 1px solid var(--border); color: var(--text2); font-weight: 600; font-size: 12px; background: var(--surface2); }
-    tbody td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
-    tbody tr:last-child td { border-bottom: none; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CPU Scheduler</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;500;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #07070f;
+  --bg2:     #0d0d1a;
+  --bg3:     #12121e;
+  --border:  rgba(255,255,255,0.055);
+  --border2: rgba(255,255,255,0.11);
+  --text:    #ededff;
+  --muted:   #52527a;
+  --accent:  #6c52ff;
+  --accent2: #a692ff;
+  --cyan:    #00d4ff;
+  --green:   #00ffaa;
+  --amber:   #ffb347;
+  --pink:    #ff6eb4;
+  --red:     #ff5252;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* grid bg */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background-image:
+    linear-gradient(rgba(108,82,255,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(108,82,255,0.035) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+}
+
+/* orbs */
+.orb { position: fixed; border-radius: 50%; filter: blur(140px); pointer-events: none; z-index: 0; }
+.orb1 { width: 800px; height: 800px; background: rgba(108,82,255,0.07); top: -300px; left: -200px; }
+.orb2 { width: 500px; height: 500px; background: rgba(0,212,255,0.045); bottom: 0; right: -150px; }
+
+.app {
+  position: relative; z-index: 1;
+  max-width: 1040px; margin: 0 auto;
+  padding: 60px 28px 100px;
+}
+
+/* ─── Header ─── */
+.header { margin-bottom: 56px; }
+
+.header h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: 52px;
+  font-weight: 800;
+  letter-spacing: -2.5px;
+  line-height: 1;
+  margin-bottom: 12px;
+  background: linear-gradient(120deg, #fff 0%, #c4b8ff 50%, var(--cyan) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.header-sub {
+  font-size: 16px;
+  color: var(--muted);
+  font-weight: 400;
+  letter-spacing: .01em;
+  margin-bottom: 20px;
+}
+
+.pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.pill {
+  padding: 5px 14px;
+  border: 1px solid var(--border2);
+  border-radius: 999px;
+  font-size: 12px; color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  letter-spacing: .02em;
+  background: rgba(255,255,255,0.02);
+}
+
+/* ─── Section label ─── */
+.slabel {
+  font-size: 10px; font-weight: 600;
+  letter-spacing: .2em; text-transform: uppercase;
+  color: var(--muted);
+  display: flex; align-items: center; gap: 14px;
+  margin-bottom: 16px;
+}
+.slabel::after { content:''; flex:1; height:1px; background: var(--border); }
+
+/* ─── Algo grid — always 3×2 ─── */
+.algo-section { margin-bottom: 20px; }
+
+.algo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.algo-btn {
+  position: relative;
+  padding: 14px 16px 13px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg2);
+  color: var(--muted);
+  font-family: 'Inter', sans-serif;
+  font-size: 15px; font-weight: 500;
+  cursor: pointer; transition: all .18s;
+  text-align: left; overflow: hidden;
+}
+.algo-btn::before {
+  content:''; position:absolute; inset:0; opacity:0;
+  background: linear-gradient(135deg, rgba(108,82,255,0.13), rgba(0,212,255,0.04));
+  transition: opacity .18s;
+}
+.algo-btn:hover { border-color: var(--border2); color: var(--text); }
+.algo-btn:hover::before { opacity: 1; }
+
+.algo-btn.active {
+  border-color: var(--accent);
+  background: rgba(108,82,255,0.1);
+  color: var(--text);
+  font-weight: 600;
+}
+.algo-btn.active::before { opacity: 1; }
+.algo-btn.active::after {
+  content:''; position:absolute;
+  top:0; left:0; right:0; height:2px;
+  background: linear-gradient(90deg, var(--accent), var(--cyan));
+  border-radius: 12px 12px 0 0;
+}
+
+.algo-tag {
+  display: block;
+  font-family: 'Space Mono', monospace;
+  font-size: 9px; letter-spacing: .08em;
+  color: var(--muted);
+  margin-bottom: 4px;
+  opacity: .7;
+}
+.algo-btn.active .algo-tag { color: var(--accent2); opacity: 1; }
+
+.desc-box {
+  padding: 14px 18px;
+  background: rgba(108,82,255,0.055);
+  border: 1px solid rgba(108,82,255,0.13);
+  border-radius: 12px;
+  font-size: 14px; color: #8888bb; line-height: 1.65;
+}
+.desc-box strong { color: var(--accent2); font-weight: 600; }
+
+.quantum-row {
+  display: none; align-items: center; gap: 14px;
+  margin-top: 10px; padding: 13px 18px;
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.quantum-row label { font-size: 14px; color: var(--muted); }
+.quantum-input {
+  width: 76px; padding: 8px 10px;
+  border: 1px solid var(--border2); border-radius: 8px;
+  background: var(--bg); color: var(--text);
+  font-family: 'Space Mono', monospace;
+  font-size: 15px; text-align: center;
+}
+.quantum-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(108,82,255,0.15); }
+
+/* ─── Main 2-col ─── */
+.main-grid {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 14px; margin-bottom: 14px;
+}
+@media (max-width: 740px) { .main-grid { grid-template-columns: 1fr; } .algo-grid { grid-template-columns: repeat(2,1fr); } }
+
+/* ─── Card ─── */
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  position: relative; overflow: hidden;
+}
+.card::before {
+  content:''; position:absolute;
+  top:0; left:0; right:0; height:1px;
+  background: linear-gradient(90deg,transparent,rgba(108,82,255,0.22),transparent);
+}
+
+/* ─── Process table — column headers ONLY ONCE ─── */
+.proc-header {
+  display: grid;
+  grid-template-columns: 48px 1fr 1fr 36px;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2px;
+}
+.proc-header.with-pri { grid-template-columns: 48px 1fr 1fr 1fr 36px; }
+.col-h {
+  font-size: 10px; font-weight: 600;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted); text-align: center;
+}
+
+.proc-row {
+  display: grid;
+  grid-template-columns: 48px 1fr 1fr 36px;
+  gap: 8px; align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  animation: popIn .18s ease;
+}
+.proc-row.with-pri { grid-template-columns: 48px 1fr 1fr 1fr 36px; }
+.proc-row:last-child { border-bottom: none; }
+
+@keyframes popIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+
+.proc-id {
+  display: flex; align-items: center; gap: 7px;
+  font-family: 'Space Mono', monospace;
+  font-size: 12px; font-weight: 700; color: var(--text);
+}
+.proc-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+.proc-input {
+  width: 100%; padding: 8px 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px; background: var(--bg);
+  color: var(--text);
+  font-family: 'Space Mono', monospace;
+  font-size: 14px; text-align: center;
+  transition: border-color .15s, background .15s;
+}
+.proc-input:focus { outline:none; border-color: var(--accent); background: var(--bg3); box-shadow: 0 0 0 3px rgba(108,82,255,0.1); }
+
+.proc-del {
+  width: 32px; height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px; background: transparent;
+  color: var(--muted); cursor: pointer; font-size: 17px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.proc-del:hover { background: rgba(255,82,82,0.1); border-color: rgba(255,82,82,0.3); color: var(--red); }
+
+.add-btn {
+  width: 100%; margin-top: 12px; padding: 10px;
+  border: 1px dashed var(--border2); border-radius: 10px;
+  background: transparent; color: var(--muted);
+  font-family: 'Inter', sans-serif; font-size: 14px;
+  cursor: pointer; transition: all .18s;
+}
+.add-btn:hover { border-color: var(--accent); color: var(--accent2); background: rgba(108,82,255,0.05); }
+
+/* ─── Side panel ─── */
+.side-panel { display: flex; flex-direction: column; gap: 14px; }
+
+.run-card {
+  background: linear-gradient(145deg, rgba(108,82,255,0.14), rgba(0,212,255,0.05));
+  border: 1px solid rgba(108,82,255,0.2);
+  border-radius: 16px; padding: 24px;
+  position: relative; overflow: hidden;
+}
+.run-card::after {
+  content:''; position:absolute;
+  top:-70px; right:-70px; width:180px; height:180px;
+  background: radial-gradient(circle, rgba(108,82,255,0.16), transparent 70%);
+  pointer-events: none;
+}
+
+.run-ready {
+  font-size: 10px; font-weight: 700; letter-spacing: .18em;
+  text-transform: uppercase; color: rgba(255,255,255,0.2);
+  margin-bottom: 16px;
+}
+
+.run-btn {
+  width: 100%; padding: 14px;
+  border: none; border-radius: 10px;
+  background: linear-gradient(135deg, #6c52ff, #9b6fff);
+  color: #fff; font-family: 'Syne', sans-serif;
+  font-size: 16px; font-weight: 700;
+  cursor: pointer; transition: all .2s;
+  letter-spacing: .02em; position: relative; overflow: hidden;
+}
+.run-btn::before {
+  content:''; position:absolute; inset:0;
+  background: linear-gradient(135deg,rgba(255,255,255,0.1),transparent);
+  opacity:0; transition: opacity .2s;
+}
+.run-btn:hover { transform:translateY(-2px); box-shadow: 0 10px 40px rgba(108,82,255,0.5); }
+.run-btn:hover::before { opacity:1; }
+.run-btn:active { transform:translateY(0); }
+
+.reset-btn {
+  width: 100%; margin-top: 8px; padding: 11px;
+  border: 1px solid var(--border2); border-radius: 10px;
+  background: transparent; color: var(--muted);
+  font-family: 'Inter', sans-serif; font-size: 14px;
+  cursor: pointer; transition: all .18s;
+}
+.reset-btn:hover { color: var(--text); background: rgba(255,255,255,0.04); border-color: var(--border2); }
+
+.err-box {
+  margin-top: 10px; padding: 10px 14px;
+  background: rgba(255,82,82,0.08);
+  border: 1px solid rgba(255,82,82,0.18);
+  border-radius: 8px; font-size: 13px; color: #ff8888; display: none;
+}
+
+.ref-card { padding: 20px; }
+.ref-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+}
+.ref-row:last-child { border-bottom: none; }
+.ref-k { color: var(--muted); }
+.ref-v { font-family: 'Space Mono', monospace; color: var(--accent2); font-size: 11px; }
+
+/* ─── Results ─── */
+#results { display: none; animation: riseUp .35s ease; }
+@keyframes riseUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
+
+/* ─── Stats ─── */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px; margin-bottom: 14px;
+}
+@media (max-width:740px){ .stats-row { grid-template-columns: repeat(2,1fr); } }
+
+.stat-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 14px; padding: 18px 16px;
+  position: relative; overflow: hidden; transition: transform .18s;
+}
+.stat-card:hover { transform: translateY(-3px); }
+.stat-card::after {
+  content:''; position:absolute;
+  bottom:0; left:0; right:0; height:2px;
+}
+.stat-card:nth-child(1)::after { background: var(--accent); }
+.stat-card:nth-child(2)::after { background: var(--cyan); }
+.stat-card:nth-child(3)::after { background: var(--green); }
+.stat-card:nth-child(4)::after { background: var(--amber); }
+.stat-card:nth-child(5)::after { background: var(--pink); }
+
+.stat-lbl {
+  font-size: 10px; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+}
+.stat-num {
+  font-family: 'Space Mono', monospace;
+  font-size: 26px; font-weight: 700; color: var(--text); line-height: 1;
+}
+.stat-unit { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 3px; }
+
+/* ─── Gantt ─── */
+.gantt-scroll { overflow-x: auto; padding-bottom: 6px; }
+
+.gantt-bar {
+  display: flex; height: 56px;
+  border-radius: 12px; overflow: hidden;
+  min-width: 300px; gap: 3px;
+}
+
+.gseg {
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Space Mono', monospace;
+  font-size: 12px; font-weight: 700;
+  color: rgba(255,255,255,0.92);
+  min-width: 36px; border-radius: 8px;
+  position: relative; overflow: hidden;
+  transition: filter .15s, transform .15s;
+  cursor: default; letter-spacing: .03em;
+}
+/* glass shine */
+.gseg::before {
+  content:''; position:absolute;
+  top:0; left:0; right:0; height:46%;
+  background: rgba(255,255,255,0.09);
+  border-radius: 8px 8px 0 0;
+}
+/* bottom shadow */
+.gseg::after {
+  content:''; position:absolute;
+  bottom:0; left:0; right:0; height:28%;
+  background: rgba(0,0,0,0.18);
+}
+.gseg span { position:relative; z-index:1; }
+.gseg:hover { filter: brightness(1.18) saturate(1.15); transform: scaleY(1.06); z-index:2; }
+
+.gseg.idle {
+  background: rgba(255,255,255,0.025) !important;
+  color: var(--muted); border: 1px solid var(--border);
+}
+.gseg.idle::before, .gseg.idle::after { display:none; }
+
+.gtimes { display:flex; margin-top:6px; min-width:300px; }
+.gtimes span {
+  flex:0 0 auto;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px; color: var(--muted);
+}
+
+/* ─── Table ─── */
+.tbl-wrap { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; }
+thead tr { border-bottom: 1px solid var(--border2); }
+th {
+  padding: 10px 14px; text-align:left;
+  font-size: 10px; font-weight:700;
+  letter-spacing:.13em; text-transform:uppercase; color:var(--muted);
+}
+td { padding: 13px 14px; border-bottom: 1px solid var(--border); color: #a8a8cc; font-size:14px; }
+tbody tr:last-child td { border-bottom:none; }
+tbody tr { transition: background .12s; }
+tbody tr:hover td { background: rgba(108,82,255,0.04); color: var(--text); }
+.pid-cell { display:flex; align-items:center; gap:9px; font-family:'Space Mono',monospace; font-weight:700; color:var(--text); font-size:13px; }
+.pid-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+td.hl { color: var(--accent2); font-family:'Space Mono',monospace; font-size:13px; }
+</style>
 </head>
 <body>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+
 <div class="app">
+
+  <!-- Header -->
   <div class="header">
-    <h1>CPU Scheduling Simulator</h1>
-    <span class="badge" id="algo-badge">FCFS</span>
+    <h1>CPU Scheduler</h1>
+    <div class="header-sub">Interactive process scheduling visualizer</div>
+    <div class="pills">
+      <span class="pill">6 algorithms</span>
+      <span class="pill">Gantt chart</span>
+      <span class="pill">Live metrics</span>
+      <span class="pill">Preemptive &amp; Non-preemptive</span>
+    </div>
   </div>
-  <div class="card">
-    <div class="card-title">Select Algorithm</div>
+
+  <!-- Algorithms — 3×2 grid -->
+  <div class="algo-section">
+    <div class="slabel">Algorithm</div>
     <div class="algo-grid">
-      <button class="algo-btn active" data-algo="fcfs">FCFS</button>
-      <button class="algo-btn" data-algo="sjf">SJF (Non-preemptive)</button>
-      <button class="algo-btn" data-algo="srtn">SRTN (Preemptive SJF)</button>
-      <button class="algo-btn" data-algo="rr">Round Robin</button>
-      <button class="algo-btn" data-algo="priority-np">Priority (Non-preemptive)</button>
-      <button class="algo-btn" data-algo="priority-p">Priority (Preemptive)</button>
+      <button class="algo-btn active" onclick="selectAlgo('fcfs',this)">
+        <span class="algo-tag">01 · NON-PREEMPTIVE</span>FCFS
+      </button>
+      <button class="algo-btn" onclick="selectAlgo('sjf',this)">
+        <span class="algo-tag">02 · NON-PREEMPTIVE</span>SJF
+      </button>
+      <button class="algo-btn" onclick="selectAlgo('srtn',this)">
+        <span class="algo-tag">03 · PREEMPTIVE</span>SRTN
+      </button>
+      <button class="algo-btn" onclick="selectAlgo('rr',this)">
+        <span class="algo-tag">04 · PREEMPTIVE</span>Round Robin
+      </button>
+      <button class="algo-btn" onclick="selectAlgo('priority-np',this)">
+        <span class="algo-tag">05 · NON-PREEMPTIVE</span>Priority NP
+      </button>
+      <button class="algo-btn" onclick="selectAlgo('priority-p',this)">
+        <span class="algo-tag">06 · PREEMPTIVE</span>Priority P
+      </button>
     </div>
-    <div class="algo-desc" id="algo-desc">Processes execute in arrival order. Simple but can cause the convoy effect.</div>
+    <div class="desc-box" id="desc">
+      <strong>First Come First Served</strong> — Processes execute in arrival order. Simple and predictable, but long processes can block shorter ones (convoy effect).
+    </div>
     <div class="quantum-row" id="quantum-row">
-      <label>Time Quantum:</label>
-      <input type="number" id="quantum" class="quantum-input" value="2" min="1" max="20" />
-      <span style="font-size:13px;color:var(--text2)">units</span>
+      <label>Time Quantum</label>
+      <input type="number" class="quantum-input" id="quantum" value="2" min="1" max="20">
+      <span style="font-size:13px;color:var(--muted)">units per slice</span>
     </div>
   </div>
-  <div class="card">
-    <div class="card-title">Processes</div>
-    <div class="proc-header">
-      <div class="col-lbl">PID</div>
-      <div class="col-lbl">Arrival</div>
-      <div class="col-lbl">Burst</div>
-      <div class="col-lbl" id="col-pri" style="display:none">Priority</div>
-      <div class="col-lbl" id="col-gap"></div>
-      <div></div>
-    </div>
-    <div id="process-list"></div>
-    <button class="add-btn" id="btn-add">+ Add Process</button>
-  </div>
-  <div class="card">
-    <div class="run-row">
-      <button class="run-btn" id="btn-run">Run Simulation</button>
-      <button class="reset-btn" id="btn-reset">Reset</button>
-      <span id="error-msg"></span>
-    </div>
-  </div>
-  <div id="result-section">
+
+  <!-- Main grid -->
+  <div class="main-grid">
+
+    <!-- Process card -->
     <div class="card">
-      <div class="card-title">Gantt Chart</div>
-      <div class="gantt-wrap" id="gantt-wrap"></div>
+      <div class="slabel">Processes</div>
+      <!-- Single header row -->
+      <div class="proc-header" id="proc-header">
+        <div class="col-h">PID</div>
+        <div class="col-h">Arrival</div>
+        <div class="col-h">Burst</div>
+        <div class="col-h" id="pri-h" style="display:none">Priority</div>
+        <div></div>
+      </div>
+      <div id="proc-list"></div>
+      <button class="add-btn" onclick="addProc()">+ Add Process</button>
     </div>
-    <div class="stats-grid" id="stats-grid"></div>
+
+    <!-- Side -->
+    <div class="side-panel">
+      <div class="run-card">
+        <div class="run-ready">Simulation ready</div>
+        <button class="run-btn" onclick="runSim()">Run Simulation →</button>
+        <button class="reset-btn" onclick="resetSim()">↺ Reset to defaults</button>
+        <div class="err-box" id="errmsg"></div>
+      </div>
+      <div class="card ref-card">
+        <div class="slabel" style="margin-bottom:14px">Reference</div>
+        <div class="ref-row"><span class="ref-k">Priority</span><span class="ref-v">1 = highest</span></div>
+        <div class="ref-row"><span class="ref-k">Arrival</span><span class="ref-v">when it enters</span></div>
+        <div class="ref-row"><span class="ref-k">Burst</span><span class="ref-v">CPU time needed</span></div>
+        <div class="ref-row"><span class="ref-k">TAT</span><span class="ref-v">CT − AT</span></div>
+        <div class="ref-row"><span class="ref-k">WT</span><span class="ref-v">TAT − BT</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="results">
+    <div class="stats-row" id="stats"></div>
+    <div class="card" style="margin-bottom:14px">
+      <div class="slabel">Gantt Chart</div>
+      <div class="gantt-scroll" id="gantt"></div>
+    </div>
     <div class="card">
-      <div class="card-title">Process Details</div>
-      <div class="table-wrap" id="table-wrap"></div>
+      <div class="slabel">Process Breakdown</div>
+      <div class="tbl-wrap" id="tbl"></div>
     </div>
   </div>
 </div>
 
 <script>
-window.onload = function() {
+var GANTT = [
+  'linear-gradient(135deg,#6c52ff,#a07aff)',
+  'linear-gradient(135deg,#00b8ff,#0055ff)',
+  'linear-gradient(135deg,#00ffaa,#00c47a)',
+  'linear-gradient(135deg,#ffb347,#ff7300)',
+  'linear-gradient(135deg,#ff6eb4,#cc1f6a)',
+  'linear-gradient(135deg,#ff5252,#a30000)',
+  'linear-gradient(135deg,#ffe259,#ffa751)',
+  'linear-gradient(135deg,#a18cd1,#fbc2eb)'
+];
+var DOTS = ['#7c6aff','#00a8ff','#00e688','#ff9500','#ff4499','#ff3333','#ffb700','#c084fc'];
 
-  /* ── Config ── */
-  var COLORS = ['#4f46e5','#0891b2','#b45309','#be185d','#166534','#6d28d9','#c2410c','#0369a1','#065f46','#9d174d'];
-  var DESCS = {
-    'fcfs':        'Processes execute in arrival order. Simple but can cause the convoy effect.',
-    'sjf':         'Picks the shortest burst time from ready queue. Minimizes average wait but can starve long processes.',
-    'srtn':        'Preemptive SJF — switches when a shorter remaining time process arrives.',
-    'rr':          'Each process gets a fixed time slice. Fair for time-sharing systems.',
-    'priority-np': 'Runs highest priority first (1 = highest). Non-preemptive.',
-    'priority-p':  'Preemptive priority — higher priority process immediately takes the CPU.'
-  };
+var DESCS = {
+  'fcfs':        '<strong>First Come First Served</strong> — Processes execute in arrival order. Simple and predictable, but long processes can block shorter ones (convoy effect).',
+  'sjf':         '<strong>Shortest Job First</strong> — Always picks the process with the shortest burst time. Optimal average waiting time, but can starve long processes.',
+  'srtn':        '<strong>Shortest Remaining Time Next</strong> — Preemptive SJF. Instantly switches whenever a process with less remaining time arrives.',
+  'rr':          '<strong>Round Robin</strong> — Each process gets a fixed time quantum in rotation. Fair and responsive — the foundation of time-sharing systems.',
+  'priority-np': '<strong>Priority Scheduling (Non-Preemptive)</strong> — Runs the highest-priority ready process to completion. Lower number = higher priority.',
+  'priority-p':  '<strong>Priority Scheduling (Preemptive)</strong> — A higher-priority process immediately preempts whatever is currently running.'
+};
 
-  /* ── State ── */
-  var processes = [];
-  var pid = 1;
-  var currentAlgo = 'fcfs';
+var procs=[], pid=1, algo='fcfs';
 
-  /* ── DOM refs ── */
-  var elBadge      = document.getElementById('algo-badge');
-  var elDesc       = document.getElementById('algo-desc');
-  var elQuantumRow = document.getElementById('quantum-row');
-  var elColPri     = document.getElementById('col-pri');
-  var elColGap     = document.getElementById('col-gap');
-  var elList       = document.getElementById('process-list');
-  var elError      = document.getElementById('error-msg');
-  var elResult     = document.getElementById('result-section');
-  var elGantt      = document.getElementById('gantt-wrap');
-  var elStats      = document.getElementById('stats-grid');
-  var elTable      = document.getElementById('table-wrap');
+function selectAlgo(a,btn) {
+  algo=a;
+  var bs=document.getElementsByClassName('algo-btn');
+  for(var i=0;i<bs.length;i++) bs[i].classList.remove('active');
+  btn.classList.add('active');
+  document.getElementById('desc').innerHTML=DESCS[a];
+  document.getElementById('quantum-row').style.display=(a==='rr')?'flex':'none';
+  document.getElementById('results').style.display='none';
+  document.getElementById('errmsg').style.display='none';
+  renderProcs();
+}
 
-  /* ── Process helpers ── */
-  function addProcess(at, bt, pri) {
-    at  = (at  !== undefined) ? at  : 0;
-    bt  = (bt  !== undefined) ? bt  : 3;
-    pri = (pri !== undefined) ? pri : 1;
-    processes.push({ id: pid++, at: at, bt: bt, priority: pri });
-    render();
+function addProc(at,bt,pr) {
+  if(at===undefined)at=0; if(bt===undefined)bt=3; if(pr===undefined)pr=1;
+  procs.push({id:pid++,at:at,bt:bt,pr:pr});
+  renderProcs();
+}
+
+function delProc(id) {
+  procs=procs.filter(function(p){return p.id!==id;});
+  renderProcs();
+}
+
+function upd(id,field,val) {
+  for(var i=0;i<procs.length;i++)
+    if(procs[i].id===id){procs[i][field]=parseInt(val)||0;break;}
+}
+
+function renderProcs() {
+  var isPri=(algo==='priority-np'||algo==='priority-p');
+  // update header
+  var hdr=document.getElementById('proc-header');
+  hdr.className='proc-header'+(isPri?' with-pri':'');
+  document.getElementById('pri-h').style.display=isPri?'':'none';
+
+  var html='';
+  for(var i=0;i<procs.length;i++){
+    var p=procs[i], c=DOTS[i%DOTS.length];
+    html+='<div class="proc-row'+(isPri?' with-pri':'')+'">';
+    html+='<div class="proc-id"><span class="proc-dot" style="background:'+c+'"></span>P'+p.id+'</div>';
+    html+='<input class="proc-input" type="number" value="'+p.at+'" min="0" onchange="upd('+p.id+',\'at\',this.value)">';
+    html+='<input class="proc-input" type="number" value="'+p.bt+'" min="1" onchange="upd('+p.id+',\'bt\',this.value)">';
+    if(isPri) html+='<input class="proc-input" type="number" value="'+p.pr+'" min="1" max="20" onchange="upd('+p.id+',\'pr\',this.value)">';
+    html+='<button class="proc-del" onclick="delProc('+p.id+')">×</button>';
+    html+='</div>';
   }
+  document.getElementById('proc-list').innerHTML=html;
+}
 
-  function removeProcess(id) {
-    processes = processes.filter(function(p) { return p.id !== id; });
-    render();
+function resetSim(){
+  procs=[];pid=1;
+  document.getElementById('results').style.display='none';
+  document.getElementById('errmsg').style.display='none';
+  addProc(0,5,2);addProc(1,3,1);addProc(2,4,3);addProc(4,2,2);
+}
+
+/* ── Scheduling core (unchanged, proven logic) ── */
+function cp(){return procs.map(function(p){return{id:p.id,at:p.at,bt:p.bt,pr:p.pr,rem:p.bt,ct:0,tat:0,wt:0};});}
+function seg(tl,p,s,e){if(tl.length>0&&tl[tl.length-1].pid===p){tl[tl.length-1].e=e;return;}tl.push({pid:p,s:s,e:e});}
+function calc(ps){for(var i=0;i<ps.length;i++){ps[i].tat=ps[i].ct-ps[i].at;ps[i].wt=ps[i].tat-ps[i].bt;}}
+function fcfs(ps){var tl=[],t=0;ps.sort(function(a,b){return a.at-b.at;});for(var i=0;i<ps.length;i++){if(t<ps[i].at){seg(tl,'idle',t,ps[i].at);t=ps[i].at;}seg(tl,ps[i].id,t,t+ps[i].bt);ps[i].ct=t+ps[i].bt;t=ps[i].ct;}return tl;}
+function sjf(ps){var tl=[],done=[],t=0,fin=0,i;for(i=0;i<ps.length;i++)done.push(false);while(fin<ps.length){var idx=-1,sh=999999;for(i=0;i<ps.length;i++)if(!done[i]&&ps[i].at<=t&&ps[i].bt<sh){sh=ps[i].bt;idx=i;}if(idx===-1){var nx=999999;for(i=0;i<ps.length;i++)if(!done[i]&&ps[i].at<nx)nx=ps[i].at;seg(tl,'idle',t,nx);t=nx;continue;}seg(tl,ps[idx].id,t,t+ps[idx].bt);ps[idx].ct=t+ps[idx].bt;t=ps[idx].ct;done[idx]=true;fin++;}return tl;}
+function srtn(ps){var tl=[],done=[],t=0,fin=0,i;for(i=0;i<ps.length;i++)done.push(false);while(fin<ps.length){var idx=-1,sh=999999;for(i=0;i<ps.length;i++)if(!done[i]&&ps[i].at<=t&&ps[i].rem<sh){sh=ps[i].rem;idx=i;}if(idx===-1){seg(tl,'idle',t,t+1);t++;continue;}seg(tl,ps[idx].id,t,t+1);ps[idx].rem--;if(ps[idx].rem===0){ps[idx].ct=t+1;done[idx]=true;fin++;}t++;}return tl;}
+function rr(ps,q){var tl=[],done=[],inQ=[],queue=[],t=0,fin=0,i;ps.sort(function(a,b){return a.at-b.at;});for(i=0;i<ps.length;i++){done.push(false);inQ.push(false);}if(ps.length>0){queue.push(0);inQ[0]=true;}while(fin<ps.length){if(queue.length===0){var nx=999999;for(i=0;i<ps.length;i++)if(!done[i]&&ps[i].at<nx)nx=ps[i].at;seg(tl,'idle',t,nx);t=nx;for(i=0;i<ps.length;i++)if(!done[i]&&!inQ[i]&&ps[i].at<=t){queue.push(i);inQ[i]=true;}continue;}var idx=queue.shift();var run=Math.min(q,ps[idx].rem);seg(tl,ps[idx].id,t,t+run);ps[idx].rem-=run;t+=run;for(i=0;i<ps.length;i++)if(!done[i]&&!inQ[i]&&ps[i].at<=t){queue.push(i);inQ[i]=true;}if(ps[idx].rem===0){ps[idx].ct=t;done[idx]=true;fin++;}else queue.push(idx);}return tl;}
+function priNP(ps){var tl=[],done=[],t=0,fin=0,i;for(i=0;i<ps.length;i++)done.push(false);while(fin<ps.length){var idx=-1,hp=999999;for(i=0;i<ps.length;i++)if(!done[i]&&ps[i].at<=t&&ps[i].pr<hp){hp=ps[i].pr;idx=i;}if(idx===-1){var nx=999999;for(i=0;i<ps.length;i++)if(!done[i]&&ps[i].at<nx)nx=ps[i].at;seg(tl,'idle',t,nx);t=nx;continue;}seg(tl,ps[idx].id,t,t+ps[idx].bt);ps[idx].ct=t+ps[idx].bt;t=ps[idx].ct;done[idx]=true;fin++;}return tl;}
+function priP(ps){var tl=[],done=[],t=0,fin=0,i;for(i=0;i<ps.length;i++)done.push(false);while(fin<ps.length){var idx=-1,hp=999999;for(i=0;i<ps.length;i++)if(!done[i]&&ps[i].at<=t&&ps[i].pr<hp){hp=ps[i].pr;idx=i;}if(idx===-1){seg(tl,'idle',t,t+1);t++;continue;}seg(tl,ps[idx].id,t,t+1);ps[idx].rem--;if(ps[idx].rem===0){ps[idx].ct=t+1;done[idx]=true;fin++;}t++;}return tl;}
+
+function runSim(){
+  var errEl=document.getElementById('errmsg');
+  errEl.style.display='none';
+  if(procs.length===0){errEl.textContent='Add at least one process.';errEl.style.display='block';return;}
+  for(var i=0;i<procs.length;i++)
+    if(procs[i].bt<1){errEl.textContent='P'+procs[i].id+': burst must be ≥ 1.';errEl.style.display='block';return;}
+
+  var ps=cp(), q=parseInt(document.getElementById('quantum').value)||2, tl;
+  if(algo==='fcfs')        tl=fcfs(ps);
+  else if(algo==='sjf')    tl=sjf(ps);
+  else if(algo==='srtn')   tl=srtn(ps);
+  else if(algo==='rr')     tl=rr(ps,q);
+  else if(algo==='priority-np') tl=priNP(ps);
+  else if(algo==='priority-p')  tl=priP(ps);
+  calc(ps);
+
+  var total=tl[tl.length-1].e, idle=0;
+  for(var i=0;i<tl.length;i++) if(tl[i].pid==='idle') idle+=tl[i].e-tl[i].s;
+  var util=((total-idle)/total*100).toFixed(1);
+  var thru=(ps.length/total).toFixed(3);
+  var sw=0,st=0;
+  for(var i=0;i<ps.length;i++){sw+=ps[i].wt;st+=ps[i].tat;}
+  var awt=(sw/ps.length).toFixed(2), atat=(st/ps.length).toFixed(2);
+
+  var cm={}, gm={};
+  for(var i=0;i<ps.length;i++){cm[ps[i].id]=DOTS[i%DOTS.length];gm[ps[i].id]=GANTT[i%GANTT.length];}
+
+  /* Stats */
+  function sc(l,v,u){return '<div class="stat-card"><div class="stat-lbl">'+l+'</div><div class="stat-num">'+v+'<span class="stat-unit">'+u+'</span></div></div>';}
+  document.getElementById('stats').innerHTML=sc('Avg Wait',awt,'units')+sc('Avg Turnaround',atat,'units')+sc('CPU Util',util,'%')+sc('Throughput',thru,'p/u')+sc('Total Time',total,'u');
+
+  /* Gantt */
+  var tot=total||1, bar='<div class="gantt-bar">';
+  for(var i=0;i<tl.length;i++){
+    var s=tl[i],dur=s.e-s.s,pct=((dur/tot)*100).toFixed(1);
+    var idle2=(s.pid==='idle'),lbl=idle2?'—':'P'+s.pid;
+    var bg=idle2?'':('background:'+gm[s.pid]+';');
+    bar+='<div class="gseg'+(idle2?' idle':'')+'" style="'+bg+'width:'+pct+'%;min-width:'+Math.max(36,dur*26)+'px" title="'+(idle2?'Idle':'P'+s.pid)+' ['+s.s+' → '+s.e+']"><span>'+lbl+'</span></div>';
   }
+  bar+='</div><div class="gtimes">';
+  for(var i=0;i<tl.length;i++){var dur=tl[i].e-tl[i].s;bar+='<span style="width:'+((dur/tot)*100).toFixed(1)+'%;min-width:'+Math.max(36,dur*26)+'px">'+tl[i].s+'</span>';}
+  bar+='<span>'+tl[tl.length-1].e+'</span></div>';
+  document.getElementById('gantt').innerHTML=bar;
 
-  function updateField(id, field, val) {
-    for (var i = 0; i < processes.length; i++) {
-      if (processes[i].id === id) {
-        processes[i][field] = parseInt(val, 10) || 0;
-        break;
-      }
-    }
+  /* Table */
+  var isPri=(algo==='priority-np'||algo==='priority-p');
+  var t='<table><thead><tr><th>Process</th><th>Arrival</th><th>Burst</th>'+(isPri?'<th>Priority</th>':'')+'<th>Completion</th><th>Turnaround</th><th>Waiting</th></tr></thead><tbody>';
+  ps.sort(function(a,b){return a.id-b.id;});
+  for(var i=0;i<ps.length;i++){
+    var p=ps[i];
+    t+='<tr><td><div class="pid-cell"><span class="pid-dot" style="background:'+cm[p.id]+'"></span>P'+p.id+'</div></td><td>'+p.at+'</td><td>'+p.bt+'</td>'+(isPri?'<td>'+p.pr+'</td>':'')+'<td class="hl">'+p.ct+'</td><td class="hl">'+p.tat+'</td><td class="hl">'+p.wt+'</td></tr>';
   }
+  t+='</tbody></table>';
+  document.getElementById('tbl').innerHTML=t;
+  document.getElementById('results').style.display='block';
+}
 
-  function render() {
-    var isPri = (currentAlgo === 'priority-np' || currentAlgo === 'priority-p');
-    elColPri.style.display = isPri ? '' : 'none';
-    elColGap.style.display = isPri ? 'none' : '';
-    elList.innerHTML = '';
-    for (var i = 0; i < processes.length; i++) {
-      (function(p, color) {
-        var row = document.createElement('div');
-        row.className = 'proc-row';
-
-        var nameDiv = document.createElement('div');
-        nameDiv.className = 'p-name';
-        nameDiv.innerHTML = '<span class="p-dot" style="background:' + color + '"></span>P' + p.id;
-
-        var atInput = makeNumInput(p.at,   0, 999, function(v){ updateField(p.id, 'at', v); });
-        var btInput = makeNumInput(p.bt,   1, 999, function(v){ updateField(p.id, 'bt', v); });
-        var priInput = isPri ? makeNumInput(p.priority, 1, 20, function(v){ updateField(p.id, 'priority', v); }) : document.createElement('div');
-
-        var spacer = document.createElement('div');
-
-        var delBtn = document.createElement('button');
-        delBtn.className = 'del-btn';
-        delBtn.textContent = '×';
-        delBtn.onclick = function() { removeProcess(p.id); };
-
-        row.appendChild(nameDiv);
-        row.appendChild(atInput);
-        row.appendChild(btInput);
-        row.appendChild(priInput);
-        row.appendChild(spacer);
-        row.appendChild(delBtn);
-        elList.appendChild(row);
-      })(processes[i], COLORS[i % COLORS.length]);
-    }
-  }
-
-  function makeNumInput(val, min, max, onChange) {
-    var inp = document.createElement('input');
-    inp.type = 'number';
-    inp.className = 'num-input';
-    inp.value = val;
-    inp.min = min;
-    inp.max = max;
-    inp.onchange = function() { onChange(this.value); };
-    return inp;
-  }
-
-  /* ── Algorithm buttons ── */
-  var algoBtns = document.querySelectorAll('.algo-btn');
-  for (var i = 0; i < algoBtns.length; i++) {
-    algoBtns[i].onclick = function() {
-      for (var j = 0; j < algoBtns.length; j++) algoBtns[j].classList.remove('active');
-      this.classList.add('active');
-      currentAlgo = this.getAttribute('data-algo');
-      elBadge.textContent = this.textContent;
-      elDesc.textContent  = DESCS[currentAlgo];
-      elQuantumRow.style.display = (currentAlgo === 'rr') ? 'flex' : 'none';
-      elResult.style.display = 'none';
-      elError.innerHTML = '';
-      render();
-    };
-  }
-
-  /* ── Add / Reset ── */
-  document.getElementById('btn-add').onclick = function() { addProcess(); };
-  document.getElementById('btn-reset').onclick = function() {
-    processes = []; pid = 1;
-    elResult.style.display = 'none';
-    elError.innerHTML = '';
-    addProcess(0, 5, 2);
-    addProcess(1, 3, 1);
-    addProcess(2, 4, 3);
-    addProcess(4, 2, 2);
-  };
-
-  /* ── Scheduling core ── */
-  function copyProcs() {
-    return processes.map(function(p) {
-      return { id:p.id, at:p.at, bt:p.bt, priority:p.priority, remaining:p.bt, ct:0, tat:0, wt:0 };
-    });
-  }
-
-  function addSeg(tl, pid, start, end) {
-    if (tl.length > 0 && tl[tl.length-1].pid === pid)
-      tl[tl.length-1].end = end;
-    else
-      tl.push({ pid:pid, start:start, end:end });
-  }
-
-  function metrics(ps) {
-    for (var i = 0; i < ps.length; i++) {
-      ps[i].tat = ps[i].ct - ps[i].at;
-      ps[i].wt  = ps[i].tat - ps[i].bt;
-    }
-  }
-
-  function runFCFS(ps) {
-    var tl = [], t = 0;
-    ps.sort(function(a,b){ return a.at-b.at; });
-    for (var i = 0; i < ps.length; i++) {
-      if (t < ps[i].at) { addSeg(tl,'idle',t,ps[i].at); t = ps[i].at; }
-      addSeg(tl, ps[i].id, t, t+ps[i].bt);
-      ps[i].ct = t+ps[i].bt; t = ps[i].ct;
-    }
-    return tl;
-  }
-
-  function runSJF(ps) {
-    var tl=[], done=[], t=0, fin=0, i;
-    for (i=0;i<ps.length;i++) done.push(false);
-    while (fin < ps.length) {
-      var idx=-1, sh=999999;
-      for (i=0;i<ps.length;i++)
-        if (!done[i] && ps[i].at<=t && ps[i].bt<sh) { sh=ps[i].bt; idx=i; }
-      if (idx===-1) {
-        var nx=999999;
-        for (i=0;i<ps.length;i++) if (!done[i] && ps[i].at<nx) nx=ps[i].at;
-        addSeg(tl,'idle',t,nx); t=nx; continue;
-      }
-      addSeg(tl,ps[idx].id,t,t+ps[idx].bt);
-      ps[idx].ct=t+ps[idx].bt; t=ps[idx].ct; done[idx]=true; fin++;
-    }
-    return tl;
-  }
-
-  function runSRTN(ps) {
-    var tl=[], done=[], t=0, fin=0, i;
-    for (i=0;i<ps.length;i++) done.push(false);
-    while (fin < ps.length) {
-      var idx=-1, sh=999999;
-      for (i=0;i<ps.length;i++)
-        if (!done[i] && ps[i].at<=t && ps[i].remaining<sh) { sh=ps[i].remaining; idx=i; }
-      if (idx===-1) { addSeg(tl,'idle',t,t+1); t++; continue; }
-      addSeg(tl,ps[idx].id,t,t+1);
-      ps[idx].remaining--;
-      if (ps[idx].remaining===0) { ps[idx].ct=t+1; done[idx]=true; fin++; }
-      t++;
-    }
-    return tl;
-  }
-
-  function runRR(ps, q) {
-    var tl=[], done=[], inQ=[], queue=[], t=0, fin=0, i;
-    ps.sort(function(a,b){ return a.at-b.at; });
-    for (i=0;i<ps.length;i++) { done.push(false); inQ.push(false); }
-    if (ps.length>0) { queue.push(0); inQ[0]=true; }
-    while (fin < ps.length) {
-      if (queue.length===0) {
-        var nx=999999;
-        for (i=0;i<ps.length;i++) if (!done[i] && ps[i].at<nx) nx=ps[i].at;
-        addSeg(tl,'idle',t,nx); t=nx;
-        for (i=0;i<ps.length;i++)
-          if (!done[i]&&!inQ[i]&&ps[i].at<=t){queue.push(i);inQ[i]=true;}
-        continue;
-      }
-      var idx=queue.shift();
-      var run=Math.min(q, ps[idx].remaining);
-      addSeg(tl,ps[idx].id,t,t+run);
-      ps[idx].remaining-=run; t+=run;
-      for (i=0;i<ps.length;i++)
-        if (!done[i]&&!inQ[i]&&ps[i].at<=t){queue.push(i);inQ[i]=true;}
-      if (ps[idx].remaining===0) { ps[idx].ct=t; done[idx]=true; fin++; }
-      else queue.push(idx);
-    }
-    return tl;
-  }
-
-  function runPriNP(ps) {
-    var tl=[], done=[], t=0, fin=0, i;
-    for (i=0;i<ps.length;i++) done.push(false);
-    while (fin < ps.length) {
-      var idx=-1, hp=999999;
-      for (i=0;i<ps.length;i++)
-        if (!done[i]&&ps[i].at<=t&&ps[i].priority<hp){hp=ps[i].priority;idx=i;}
-      if (idx===-1) {
-        var nx=999999;
-        for (i=0;i<ps.length;i++) if (!done[i]&&ps[i].at<nx) nx=ps[i].at;
-        addSeg(tl,'idle',t,nx); t=nx; continue;
-      }
-      addSeg(tl,ps[idx].id,t,t+ps[idx].bt);
-      ps[idx].ct=t+ps[idx].bt; t=ps[idx].ct; done[idx]=true; fin++;
-    }
-    return tl;
-  }
-
-  function runPriP(ps) {
-    var tl=[], done=[], t=0, fin=0, i;
-    for (i=0;i<ps.length;i++) done.push(false);
-    while (fin < ps.length) {
-      var idx=-1, hp=999999;
-      for (i=0;i<ps.length;i++)
-        if (!done[i]&&ps[i].at<=t&&ps[i].priority<hp){hp=ps[i].priority;idx=i;}
-      if (idx===-1) { addSeg(tl,'idle',t,t+1); t++; continue; }
-      addSeg(tl,ps[idx].id,t,t+1);
-      ps[idx].remaining--;
-      if (ps[idx].remaining===0){ps[idx].ct=t+1;done[idx]=true;fin++;}
-      t++;
-    }
-    return tl;
-  }
-
-  /* ── Run simulation ── */
-  document.getElementById('btn-run').onclick = function() {
-    elError.innerHTML = '';
-
-    if (processes.length === 0) {
-      elError.innerHTML = '<span class="err">Add at least one process.</span>'; return;
-    }
-    for (var i = 0; i < processes.length; i++) {
-      if (processes[i].bt < 1) {
-        elError.innerHTML = '<span class="err">P' + processes[i].id + ': burst must be at least 1.</span>'; return;
-      }
-    }
-
-    var ps = copyProcs();
-    var q  = parseInt(document.getElementById('quantum').value, 10) || 2;
-    var tl;
-
-    if      (currentAlgo === 'fcfs')        tl = runFCFS(ps);
-    else if (currentAlgo === 'sjf')         tl = runSJF(ps);
-    else if (currentAlgo === 'srtn')        tl = runSRTN(ps);
-    else if (currentAlgo === 'rr')          tl = runRR(ps, q);
-    else if (currentAlgo === 'priority-np') tl = runPriNP(ps);
-    else if (currentAlgo === 'priority-p')  tl = runPriP(ps);
-
-    metrics(ps);
-
-    var totalTime = tl.length > 0 ? tl[tl.length-1].end : 0;
-    var idleTime  = 0;
-    for (var i = 0; i < tl.length; i++)
-      if (tl[i].pid === 'idle') idleTime += tl[i].end - tl[i].start;
-
-    var cpuUtil   = totalTime > 0 ? ((totalTime-idleTime)/totalTime*100).toFixed(1) : '0.0';
-    var throughput = totalTime > 0 ? (ps.length/totalTime).toFixed(3) : '0.000';
-    var sw=0, st=0;
-    for (var i=0;i<ps.length;i++){sw+=ps[i].wt; st+=ps[i].tat;}
-    var avgWT  = (sw/ps.length).toFixed(2);
-    var avgTAT = (st/ps.length).toFixed(2);
-
-    drawGantt(tl, ps, totalTime);
-    drawStats(avgWT, avgTAT, cpuUtil, throughput, totalTime);
-    drawTable(ps);
-    elResult.style.display = '';
-  };
-
-  /* ── Draw Gantt ── */
-  function drawGantt(tl, ps, totalTime) {
-    var colorMap = {};
-    for (var i=0;i<ps.length;i++) colorMap[ps[i].id] = COLORS[i % COLORS.length];
-
-    var total = totalTime || 1;
-    var barHTML = '<div class="gantt-bar">';
-    for (var i=0;i<tl.length;i++) {
-      var s = tl[i];
-      var dur = s.end - s.start;
-      var pct = (dur / total * 100).toFixed(2);
-      var minW = Math.max(28, dur * 24);
-      var isIdle = (s.pid === 'idle');
-      var label = isIdle ? 'idle' : 'P'+s.pid;
-      var bg = isIdle ? '' : 'background:'+colorMap[s.pid]+';';
-      barHTML += '<div class="gantt-seg'+(isIdle?' idle':'')+'" style="'+bg+'width:'+pct+'%;min-width:'+minW+'px" title="'+label+' ['+s.start+'-'+s.end+']">'+label+'</div>';
-    }
-    barHTML += '</div>';
-
-    var ticks = [0];
-    for (var i=0;i<tl.length;i++) {
-      if (ticks.indexOf(tl[i].start) === -1) ticks.push(tl[i].start);
-      if (ticks.indexOf(tl[i].end)   === -1) ticks.push(tl[i].end);
-    }
-    ticks.sort(function(a,b){return a-b;});
-    var tickHTML = '<div class="gantt-timeline">';
-    for (var i=0;i<ticks.length;i++) {
-      var pct = (ticks[i]/total*100).toFixed(2);
-      tickHTML += '<span class="gantt-tick" style="left:'+pct+'%">'+ticks[i]+'</span>';
-    }
-    tickHTML += '</div>';
-    elGantt.innerHTML = barHTML + tickHTML;
-  }
-
-  /* ── Draw Stats ── */
-  function drawStats(avgWT, avgTAT, cpuUtil, throughput, totalTime) {
-    elStats.innerHTML =
-      card('Avg Waiting', avgWT, 'units') +
-      card('Avg Turnaround', avgTAT, 'units') +
-      card('CPU Utilization', cpuUtil, '%') +
-      card('Throughput', throughput, 'p/unit') +
-      card('Total Time', totalTime, 'units');
-  }
-  function card(label, val, unit) {
-    return '<div class="stat-card"><div class="stat-label">'+label+'</div><div class="stat-val">'+val+' <span class="stat-unit">'+unit+'</span></div></div>';
-  }
-
-  /* ── Draw Table ── */
-  function drawTable(ps) {
-    var isPri = (currentAlgo === 'priority-np' || currentAlgo === 'priority-p');
-    var colorMap = {};
-    for (var i=0;i<ps.length;i++) colorMap[ps[i].id] = COLORS[i % COLORS.length];
-
-    var h = '<table><thead><tr><th>Process</th><th>Arrival</th><th>Burst</th>'+(isPri?'<th>Priority</th>':'')+'<th>Completion</th><th>Turnaround</th><th>Waiting</th></tr></thead><tbody>';
-    var sorted = ps.slice().sort(function(a,b){return a.id-b.id;});
-    for (var i=0;i<sorted.length;i++) {
-      var p = sorted[i];
-      h += '<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+colorMap[p.id]+';margin-right:6px;"></span>P'+p.id+'</td><td>'+p.at+'</td><td>'+p.bt+'</td>'+(isPri?'<td>'+p.priority+'</td>':'')+'<td>'+p.ct+'</td><td>'+p.tat+'</td><td>'+p.wt+'</td></tr>';
-    }
-    h += '</tbody></table>';
-    elTable.innerHTML = h;
-  }
-
-  /* ── Load defaults ── */
-  addProcess(0, 5, 2);
-  addProcess(1, 3, 1);
-  addProcess(2, 4, 3);
-  addProcess(4, 2, 2);
-
-}; /* end window.onload */
+addProc(0,5,2);addProc(1,3,1);addProc(2,4,3);addProc(4,2,2);
 </script>
 </body>
 </html>
