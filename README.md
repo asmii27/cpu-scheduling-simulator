@@ -1,6 +1,6 @@
 # CPU Scheduler
 
-An interactive browser-based visualizer for 6 classic CPU scheduling algorithms built with vanilla HTML, CSS, and JavaScript.
+An interactive browser based visualizer for 6 classic CPU scheduling algorithms built with vanilla HTML, CSS, and JavaScript.
 
 ## Live Demo
 [https://asmii27.github.io/cpu-scheduling-simulator](https://asmii27.github.io/cpu-scheduling-simulator)
