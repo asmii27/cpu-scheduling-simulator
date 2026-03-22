@@ -24,7 +24,7 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; overflow-x: hidden; }
 
 body {
   font-family: 'Inter', sans-serif;
@@ -32,6 +32,7 @@ body {
   color: var(--text);
   min-height: 100vh;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   font-size: 15px;
   line-height: 1.6;
 }
@@ -55,7 +56,7 @@ body::before {
 .app {
   position: relative; z-index: 1;
   max-width: 1040px; margin: 0 auto;
-  padding: 60px 28px 100px;
+  padding: clamp(28px, 5vw, 60px) clamp(16px, 4vw, 28px) 80px;
 }
 
 /* ─── Header ─── */
@@ -63,11 +64,12 @@ body::before {
 
 .header h1 {
   font-family: 'Syne', sans-serif;
-  font-size: 52px;
+  font-size: clamp(32px, 7vw, 52px);
   font-weight: 800;
-  letter-spacing: -2.5px;
+  letter-spacing: clamp(-1.5px, -0.05em, -2.5px);
   line-height: 1;
   margin-bottom: 12px;
+  color: #fff;
   background: linear-gradient(120deg, #fff 0%, #c4b8ff 50%, var(--cyan) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -188,7 +190,26 @@ body::before {
   grid-template-columns: 1fr 260px;
   gap: 14px; margin-bottom: 14px;
 }
-@media (max-width: 740px) { .main-grid { grid-template-columns: 1fr; } .algo-grid { grid-template-columns: repeat(2,1fr); } }
+@media (max-width: 740px) {
+  .main-grid { grid-template-columns: 1fr; }
+  .algo-grid { grid-template-columns: repeat(2,1fr); }
+}
+@media (max-width: 480px) {
+  .algo-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .algo-btn { padding: 11px 10px 10px; font-size: 13px; }
+  .pills { display: none; }
+  .header-sub { font-size: 14px; }
+  .header { margin-bottom: 32px; }
+  .proc-header, .proc-row { grid-template-columns: 40px 1fr 1fr 28px !important; gap: 6px; }
+  .proc-header.with-pri, .proc-row.with-pri { grid-template-columns: 40px 1fr 1fr 1fr 28px !important; }
+  .proc-input { font-size: 13px; padding: 7px 4px; }
+  .stat-num { font-size: 20px; }
+  .gseg { font-size: 11px; min-width: 28px !important; }
+  .app { padding: 24px 14px 60px; }
+  .card { padding: 18px 16px; }
+  .run-card { padding: 18px 16px; }
+  .slabel { font-size: 9px; }
+}
 
 /* ─── Card ─── */
 .card {
@@ -196,12 +217,14 @@ body::before {
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 24px;
-  position: relative; overflow: hidden;
+  position: relative;
 }
 .card::before {
   content:''; position:absolute;
-  top:0; left:0; right:0; height:1px;
+  top:0; left:20%; right:20%; height:1px;
   background: linear-gradient(90deg,transparent,rgba(108,82,255,0.22),transparent);
+  border-radius: 0;
+  z-index: 1;
 }
 
 /* ─── Process table — column headers ONLY ONCE ─── */
@@ -374,45 +397,38 @@ body::before {
 .stat-unit { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 3px; }
 
 /* ─── Gantt ─── */
-.gantt-scroll { overflow-x: auto; padding-bottom: 6px; }
+.gantt-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 6px;
+  /* prevent the page from scrolling sideways when swiping gantt */
+  overscroll-behavior-x: contain;
+}
 
 .gantt-bar {
   display: flex; height: 56px;
-  border-radius: 12px; overflow: hidden;
-  min-width: 300px; gap: 3px;
+  border-radius: 12px;
+  min-width: 200px; gap: 2px;
 }
 
 .gseg {
   display: flex; align-items: center; justify-content: center;
   font-family: 'Space Mono', monospace;
   font-size: 12px; font-weight: 700;
-  color: rgba(255,255,255,0.92);
+  color: #fff;
   min-width: 36px; border-radius: 8px;
-  position: relative; overflow: hidden;
   transition: filter .15s, transform .15s;
   cursor: default; letter-spacing: .03em;
+  /* force GPU layer for stable color on mobile scroll */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform;
 }
-/* glass shine */
-.gseg::before {
-  content:''; position:absolute;
-  top:0; left:0; right:0; height:46%;
-  background: rgba(255,255,255,0.09);
-  border-radius: 8px 8px 0 0;
-}
-/* bottom shadow */
-.gseg::after {
-  content:''; position:absolute;
-  bottom:0; left:0; right:0; height:28%;
-  background: rgba(0,0,0,0.18);
-}
-.gseg span { position:relative; z-index:1; }
-.gseg:hover { filter: brightness(1.18) saturate(1.15); transform: scaleY(1.06); z-index:2; }
-
+.gseg:hover { filter: brightness(1.18) saturate(1.15); transform: translateZ(0) scaleY(1.06); z-index:2; }
 .gseg.idle {
-  background: rgba(255,255,255,0.025) !important;
+  background: rgba(255,255,255,0.04) !important;
   color: var(--muted); border: 1px solid var(--border);
 }
-.gseg.idle::before, .gseg.idle::after { display:none; }
 
 .gtimes { display:flex; margin-top:6px; min-width:300px; }
 .gtimes span {
@@ -543,14 +559,14 @@ td.hl { color: var(--accent2); font-family:'Space Mono',monospace; font-size:13p
 
 <script>
 var GANTT = [
-  'linear-gradient(135deg,#6c52ff,#a07aff)',
-  'linear-gradient(135deg,#00b8ff,#0055ff)',
-  'linear-gradient(135deg,#00ffaa,#00c47a)',
-  'linear-gradient(135deg,#ffb347,#ff7300)',
-  'linear-gradient(135deg,#ff6eb4,#cc1f6a)',
-  'linear-gradient(135deg,#ff5252,#a30000)',
-  'linear-gradient(135deg,#ffe259,#ffa751)',
-  'linear-gradient(135deg,#a18cd1,#fbc2eb)'
+  '#7c5cff',
+  '#0099ee',
+  '#00cc88',
+  '#ff9500',
+  '#ff3d8a',
+  '#ff4040',
+  '#ffaa00',
+  '#9b6fff'
 ];
 var DOTS = ['#7c6aff','#00a8ff','#00e688','#ff9500','#ff4499','#ff3333','#ffb700','#c084fc'];
 
@@ -668,11 +684,12 @@ function runSim(){
   for(var i=0;i<tl.length;i++){
     var s=tl[i],dur=s.e-s.s,pct=((dur/tot)*100).toFixed(1);
     var idle2=(s.pid==='idle'),lbl=idle2?'—':'P'+s.pid;
-    var bg=idle2?'':('background:'+gm[s.pid]+';');
-    bar+='<div class="gseg'+(idle2?' idle':'')+'" style="'+bg+'width:'+pct+'%;min-width:'+Math.max(36,dur*26)+'px" title="'+(idle2?'Idle':'P'+s.pid)+' ['+s.s+' → '+s.e+']"><span>'+lbl+'</span></div>';
+    var bg=idle2?'':('background:'+gm[s.pid]+' !important;');
+    var mw=window.innerWidth<480?Math.max(24,dur*18):Math.max(36,dur*26);
+    bar+='<div class="gseg'+(idle2?' idle':'')+'" style="'+bg+'width:'+pct+'%;min-width:'+mw+'px" title="'+(idle2?'Idle':'P'+s.pid)+' ['+s.s+' → '+s.e+']"><span>'+lbl+'</span></div>';
   }
   bar+='</div><div class="gtimes">';
-  for(var i=0;i<tl.length;i++){var dur=tl[i].e-tl[i].s;bar+='<span style="width:'+((dur/tot)*100).toFixed(1)+'%;min-width:'+Math.max(36,dur*26)+'px">'+tl[i].s+'</span>';}
+  for(var i=0;i<tl.length;i++){var dur=tl[i].e-tl[i].s;var mw2=window.innerWidth<480?Math.max(24,dur*18):Math.max(36,dur*26);bar+='<span style="width:'+((dur/tot)*100).toFixed(1)+'%;min-width:'+mw2+'px">'+tl[i].s+'</span>';}
   bar+='<span>'+tl[tl.length-1].e+'</span></div>';
   document.getElementById('gantt').innerHTML=bar;
 
