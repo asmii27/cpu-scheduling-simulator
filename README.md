@@ -34,5 +34,4 @@ An interactive browser based visualizer for 6 classic CPU scheduling algorithms 
 ![CSS](https://img.shields.io/badge/CSS3-1572B6?style=flat&logo=css3&logoColor=white)
 ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat&logo=javascript&logoColor=black)
 
----
-> Built as part of an Operating Systems course project.
+
